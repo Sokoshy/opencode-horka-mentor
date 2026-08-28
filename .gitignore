@@ -1,3 +1,8 @@
 node_modules/
 .env
 .DS_Store
+
+# Docs de travail locaux (non distribués)
+PLAN.md
+RESEARCH.md
+VALIDATION.md

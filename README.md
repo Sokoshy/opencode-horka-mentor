@@ -2,7 +2,7 @@
 
 Teaching AI mentor for junior developers — **port à parité 100% du plugin Claude Code `horka-mentor` vers Opencode 2** (`@opencode-ai/plugin@beta`). 2 skills complets (5+6 étapes), 3 références, 4 commandes de config, 2 modes learn/build, mode directif sécurité, proactif avec throttle, spaced repetition complet, cross-stack translation, regression detection, 10+7 règles absolues, templates mémoire.
 
-> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : Opencode 2. Distribution **GitHub** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), pas de publish npm. Basé sur `RESEARCH.md` + `PLAN.md`.
+> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : Opencode 2. Distribution **GitHub** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), pas de publish npm.
 
 ---
 
@@ -153,4 +153,4 @@ Compatibilité : `@opencode-ai/plugin@beta` (actuel : `0.0.0-beta-18414`). Teste
 
 ---
 
-*Parité complète — chaque feature de `RESEARCH.md` §1.3–1.5 est portée (mapping exhaustif `PLAN.md` §1).*
+*Parité complète avec le plugin source — chaque feature est portée (2 skills 5+6 étapes, 3 références, proactif, spaced repetition, cross-stack, regression, 10+7 règles).*
