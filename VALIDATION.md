@@ -19,12 +19,13 @@ Deux catégories :
 - [x] `expandPath('~')` → `homedir()` (11/11 pass — `node --test tests/`)
 - [x] `expandPath('~/foo/bar')` → `homedir()/foo/bar`
 - [x] `expandPath` chemin absolu inchangé
-- [x] `expandPath` chemin relatif / entrée vide / `~foo` inchangés
+- [x] `expandPath` chemin relatif inchangé ; entrée vide / `~foo` inchangées
 - [x] `parseStatusField` champ trouvé → valeur trimée
 - [x] `parseStatusField` champ absent → `undefined`
 - [x] `parseStatusField` whitespace supplémentaire trimé
 - [x] `parseStatusField` contenu multiline — ligne correspondante isolée
 - [x] `parseStatusField` pas de match sur préfixe partiel (`Level` ≠ `LevelUp` — comportement réel du regex vérifié et asserté)
+- [x] `parseStatusField` ligne sans puce `-` ne matche pas
 
 ## T6.1 — Tests fonctionnels mentor (8 tests)
 

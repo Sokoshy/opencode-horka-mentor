@@ -21,25 +21,21 @@ async function safeRead(path: string): Promise<string | null> {
   }
 }
 
-async function resolveFirstExisting(candidates: string[]): Promise<string | null> {
+async function firstExisting(
+  candidates: string[],
+  match: (s: import("node:fs").Stats) => boolean,
+): Promise<string | null> {
   for (const c of candidates) {
     try {
       const s = await stat(c)
-      if (s.isFile()) return c
+      if (match(s)) return c
     } catch {}
   }
   return null
 }
 
-async function firstExistingDir(candidates: string[]): Promise<string | null> {
-  for (const c of candidates) {
-    try {
-      const s = await stat(c)
-      if (s.isDirectory()) return c
-    } catch {}
-  }
-  return null
-}
+const firstFile = (candidates: string[]) => firstExisting(candidates, (s) => s.isFile())
+const firstDir = (candidates: string[]) => firstExisting(candidates, (s) => s.isDirectory())
 
 // Record partagé pour tous les lecteurs de topics (list_topics, check_proactive, compaction)
 type TopicRecord = {
@@ -96,7 +92,7 @@ export default Plugin.define({
       join(dirname(pkgDir), "src", "references"),
       join(locDir, "src", "references"),
     ]
-    const referencesDirResolved = await firstExistingDir(referencesCandidates)
+    const referencesDirResolved = await firstDir(referencesCandidates)
     if (!referencesDirResolved) {
       console.warn(
         `[horka-mentor] Aucun dossier references trouvé; candidats essayés: ${referencesCandidates.join(", ")}`,
@@ -110,15 +106,21 @@ export default Plugin.define({
     const compatClaudePath = opts.compatClaudePath === true
     const fallbackPath = compatClaudePath ? expandPath("~/.claude/mentor") : memoryPath
 
-    // Couple primaire/fallback centralisé — le fallback n'apparaît que s'il diffère du primaire
+    // Couple primaire/fallback centralisé — le fallback n'apparaît que s'il diffère du primaire.
+    // `paths(...segments)` construit les chemins candidats ICI (invariant local : pas de
+    // chirurgie de string sur le chemin primaire par les appelants).
     const memoryPaths = {
       primary: memoryPath,
       fallback: fallbackPath,
-      fallbackLabel: fallbackPath !== memoryPath ? fallbackPath : undefined,
+      // true si un fallback distinct existe (compatClaudePath: true)
+      get differs(): boolean {
+        return fallbackPath !== memoryPath
+      },
       // [cheminPrimaire, cheminFallback?] — le fallback seulement s'il diffère du primaire
-      orFallback(path: string): string[] {
-        if (fallbackPath === memoryPath) return [path]
-        return [path, path.replace(memoryPath, fallbackPath)]
+      paths(...segments: string[]): string[] {
+        const primary = join(memoryPath, ...segments)
+        if (fallbackPath === memoryPath) return [primary]
+        return [primary, join(fallbackPath, ...segments)]
       },
     }
 
@@ -140,8 +142,8 @@ export default Plugin.define({
       join(pkgDir, "skills", "horka-mentor-quiz.md"),
       join(locDir, "src", "skills", "horka-mentor-quiz.md"),
     ]
-    const mentorSkillPath = await resolveFirstExisting(mentorCandidates)
-    const quizSkillPath = await resolveFirstExisting(quizCandidates)
+    const mentorSkillPath = await firstFile(mentorCandidates)
+    const quizSkillPath = await firstFile(quizCandidates)
 
     let mentorRaw = mentorSkillPath ? await safeRead(mentorSkillPath) : null
     let quizRaw = quizSkillPath ? await safeRead(quizSkillPath) : null
@@ -166,20 +168,31 @@ export default Plugin.define({
     // Set storage best-effort (échecs silencieux — le filesystem reste la source de vérité)
     const safeSet = (key: string, value: unknown) => ctx.storage.set(key, value as any).catch(() => {})
 
-    // Read primary, fallback only if different (source de vérité = filesystem)
-    const tryFallback = async (primary: string) => {
-      for (const p of memoryPaths.orFallback(primary)) {
+    // Read primary, fallback only if different (source de vérité = filesystem).
+    // segments relatifs à la racine mémoire (ex: "dev-profile.md", "topics", "x.md")
+    const tryFallback = async (...segments: string[]) => {
+      for (const p of memoryPaths.paths(...segments)) {
         const c = await safeRead(p)
         if (c !== null) return c
       }
       return null
     }
 
+    // Lecteur générique fichier mémoire: lecture (primaire→fallback), miroir, message si absent
+    const readMemoryFile = async (segments: string[], notFound: string, mirrorKey?: string) => {
+      const content = await tryFallback(...segments)
+      await mirrorToStorage(mirrorKey ?? segments[segments.length - 1].replace(/\.md$/, ""), content)
+      if (content === null) return { content: notFound }
+      return { content }
+    }
+
     // Miroir fire-and-forget vers ctx.storage (cache write-only)
     const mirrorToStorage = (key: string, value: unknown) => safeSet(`mirror:${key}`, value)
 
-    // Read-modify-write du record état session (T4.3): mode actif + dernière question
-    const updateState = async (sid: string, patch: { lastQuestion?: string; mode?: "learn" | "build" }) => {
+    // Read-modify-write du record état session (T4.3): mode actif + dernier prompt utilisateur.
+    // NB: TS ne peut pas capturer la question POSÉE par le mentor (sortie modèle) — le fil
+    // pédagogique complet vit dans topics/<slug>.md + quiz-log.md (source de vérité).
+    const updateState = async (sid: string, patch: { lastPrompt?: string; mode?: "learn" | "build" }) => {
       let prev: any = null
       try {
         prev = await ctx.storage.get(`state:${sid}`)
@@ -187,7 +200,7 @@ export default Plugin.define({
       await safeSet(`state:${sid}`, {
         ...(prev ?? {}),
         ...(patch.mode ? { mode: patch.mode } : {}),
-        ...(patch.lastQuestion !== undefined ? { lastQuestion: patch.lastQuestion } : {}),
+        ...(patch.lastPrompt !== undefined ? { lastPrompt: patch.lastPrompt } : {}),
         at: Date.now(),
       })
     }
@@ -256,9 +269,11 @@ export default Plugin.define({
             if (!payload.text || payload.text.trim() === "") {
               payload.text = skillId === "horka-mentor-quiz" ? "quiz" : "mentor"
             }
-            // État persistant (T4.3): mode via sous-commande learn/build + dernière question
-            const mode = /\b(learn|build)\b/.exec(payload.text)?.[1] as "learn" | "build" | undefined
-            await updateState(sessionID, { lastQuestion: payload.text, ...(mode ? { mode } : {}) })
+            // État persistant (T4.3): mode via SOUS-COMMANDE uniquement (M2a: "le skill parse"
+            // le reste) + dernier prompt utilisateur. Ancré au début du texte — pas de
+            // détection sur le contenu ("explique le build system" ≠ mode build).
+            const mode = /^\s*(?:mentor\s+)?(learn|build)\b/i.exec(payload.text)?.[1] as "learn" | "build" | undefined
+            await updateState(sessionID, { lastPrompt: payload.text, ...(mode ? { mode } : {}) })
             await ctx.session.prompt(payload)
           },
         })
@@ -295,20 +310,13 @@ export default Plugin.define({
       // Dispatch centralisé: enum du schéma dérivé de Object.keys(handlers)
       const handlers: Record<string, (input: any) => Promise<{ content: string }>> = {
         get_profile: async () => {
-          const p = join(memoryPaths.primary, "dev-profile.md")
-          const content = await tryFallback(p)
-          const result = content ?? null
-          const fallbackTried = memoryPaths.orFallback(p)[1]
-          await mirrorToStorage("dev-profile", result)
-          if (result === null) {
-            return { content: `No profile found at ${p}${fallbackTried ? ` (fallback ${fallbackTried} tried)` : ""}. Cold start required: ask 4 questions (name/language/experience/stack).` }
-          }
-          return { content: result }
+          const fallbackTried = memoryPaths.differs ? join(memoryPaths.fallback, "dev-profile.md") : undefined
+          return readMemoryFile(["dev-profile.md"], `No profile found at ${join(memoryPaths.primary, "dev-profile.md")}${fallbackTried ? ` (fallback ${fallbackTried} tried)` : ""}. Cold start required: ask 4 questions (name/language/experience/stack).`)
         },
 
         list_topics: async () => {
-          const tryDirs = memoryPaths.orFallback(join(memoryPaths.primary, "topics"))
-          const dir = await firstExistingDir(tryDirs)
+          const tryDirs = memoryPaths.paths("topics")
+          const dir = await firstDir(tryDirs)
           if (!dir) {
             return { content: `No topics directory at ${tryDirs[0]}. No topics covered yet.` }
           }
@@ -324,33 +332,23 @@ export default Plugin.define({
           if (!topic) return { content: "Missing required field: topic (slug, e.g. 'async-await')" }
           const slug = topic.replace(/\.md$/, "").toLowerCase()
           const p = join(memoryPaths.primary, "topics", `${slug}.md`)
-          const content = await tryFallback(p)
-          if (content === null) {
-            return { content: `Topic "${slug}" not found at ${p}.` }
-          }
-          await mirrorToStorage(`topic:${slug}`, content)
-          return { content }
+          return readMemoryFile(["topics", `${slug}.md`], `Topic "${slug}" not found at ${p}.`, `topic:${slug}`)
         },
 
         get_quiz_log: async () => {
-          const p = join(memoryPaths.primary, "quiz-log.md")
-          const content = await tryFallback(p)
-          const result = content ?? null
-          await mirrorToStorage("quiz-log", result)
-          if (result === null) return { content: `No quiz-log at ${p}. No reviews scheduled yet.` }
-          return { content: result }
+          return readMemoryFile(["quiz-log.md"], `No quiz-log at ${join(memoryPaths.primary, "quiz-log.md")}. No reviews scheduled yet.`)
         },
 
         check_proactive: async (input) => {
           // Returns profile + topics summary so the MODEL can judge INTERVENE (not TS keywords)
           const promptText = input?.prompt as string | undefined
-          const profile = await tryFallback(join(memoryPaths.primary, "dev-profile.md"))
-          const tryDirs = memoryPaths.orFallback(join(memoryPaths.primary, "topics"))
-          const dir = await firstExistingDir(tryDirs)
+          const profile = await tryFallback("dev-profile.md")
+          const tryDirs = memoryPaths.paths("topics")
+          const dir = await firstDir(tryDirs)
           const topics = dir ? await readTopics(dir) : []
           const payload = {
             memoryPath: memoryPaths.primary,
-            memoryPathFallback: memoryPaths.fallbackLabel,
+            memoryPathFallback: memoryPaths.differs ? memoryPaths.fallback : undefined,
             prompt: promptText ?? "(no prompt provided)",
             today: todayISO(),
             profile: profile ? profile.slice(0, 4000) : null,
@@ -404,8 +402,8 @@ export default Plugin.define({
       if (!raw || raw.trim().length === 0) return
       const sid: string = event.sessionID
 
-      // État persistant (T4.3): dernière question posée, à chaque prompt
-      await updateState(sid, { lastQuestion: raw })
+      // État persistant (T4.3): dernier prompt utilisateur, à chaque prompt
+      await updateState(sid, { lastPrompt: raw })
 
       // (a) Invocations de commandes: skills déjà attachés — pas d'injection proactive
       //     (pas de ré-entrée), on marque juste la session active
@@ -429,27 +427,28 @@ export default Plugin.define({
       if (set.has(hash)) return
       set.add(hash)
 
-      // Throttle 2 injections / session — storage = source de vérité unique
+      // Throttle 2 injections / session — storage = source de vérité unique.
+      // Pas de skip/cooldown en TS: délégués au skill markdown (T4.1).
       let stored: any = null
       try {
         stored = await ctx.storage.get(`proactive:${sid}`)
       } catch {}
-      if (stored?.cooldown || stored?.skip) return
       const count = typeof stored?.count === "number" ? stored.count : 0
       if (count >= 2) return
 
       // Mark session active for context hook
       await safeSet(`active:${sid}`, { at: Date.now(), via: "proactive" })
 
+      // Préfixe hydraté UNE fois (pas de {{referencesDir}} littéral, y compris en fallback)
       const prefix =
         `[horka-mentor:proactive] Si cette requête implique un concept non couvert par \`${memoryPaths.primary}/topics/\` (ou niveau < confident et non évalué <30j), ` +
-        `applique le protocole mentor Step 2 Proactif du skill horka-mentor (INTERVENE vs NEVER selon {{referencesDir}}/pedagogy.md) : ` +
+        `applique le protocole mentor Step 2 Proactif du skill horka-mentor (INTERVENE vs NEVER selon ${referencesDir}/pedagogy.md) : ` +
         `1 question ouverte max (jamais oui/non), throttle 2/session, "skip" = cooldown, jamais sur concepts triviaux. ` +
         `Consulte la mémoire via le tool horka_mentor_progress (check_proactive) avant de juger. Sinon, ignore ce rappel et réponds normalement.\n\n`
 
       // Inject prefix into prompt text (owned mutable draft)
       try {
-        event.prompt.text = prefix.replace("{{referencesDir}}", referencesDir) + raw
+        event.prompt.text = prefix + raw
       } catch {
         // fallback
         if (event.prompt && typeof event.prompt.text === "string") event.prompt.text = prefix + raw
@@ -496,7 +495,7 @@ export default Plugin.define({
         `jamais de questions oui/non, max 1 question d'évaluation par concept en BUILD (max 2 avec backstep prérequis, budgets séparés), ` +
         `toujours mettre à jour la mémoire (${memoryPaths.primary}/topics/<slug>.md, quiz-log.md, dev-profile.md) après chaque interaction, ` +
         `toujours vérifier la doc via Context7 avant un exemple d'API framework/library. ` +
-        `Mémoire: ${memoryPaths.primary}/ (fallback ${memoryPaths.fallback}). ${context7Hint} ` +
+        `Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}. ${context7Hint} ` +
         `Règles: profil privé, commentaires code en anglais, topics font foi sur quiz-log, respecter skip (needs-revisit).`
 
       try {
@@ -514,7 +513,8 @@ export default Plugin.define({
     //    on tente l'enregistrement si disponible (as any), sinon on s'appuie sur le
     //    context hook ci-dessus + l'état filesystem (source de vérité).
     //    On pousse l'état RÉEL (T4.3): topics & levels via readTopics, mode actif et
-    //    dernière question depuis le record state:<sid> (prompt hook + commandes).
+    //    dernier prompt utilisateur depuis le record state:<sid> (prompt hook + commandes) ;
+    //    la question posée par le mentor reste dans topics/<slug>.md / quiz-log.md.
     // -----------------------------------------------------------------------
     try {
       await (ctx.session.hook as any)("experimental.session.compacting", async (input: any, output: any) => {
@@ -531,21 +531,22 @@ export default Plugin.define({
           .slice(0, 20)
           .map((t) => `- ${t.slug}: ${t.level} (next: ${t.next_review})`)
           .join("\n")
-        // Mode actif + dernière question réels (record state:<sid>)
+        // Mode actif + dernier prompt utilisateur réels (record state:<sid>)
         let lastState: any = null
         try {
           lastState = await ctx.storage.get(`state:${sid}`)
         } catch {}
         const mode = typeof lastState?.mode === "string" ? lastState.mode : "(mode non détecté)"
-        const lastQuestion =
-          typeof lastState?.lastQuestion === "string" ? `"${lastState.lastQuestion}"` : "(aucune question enregistrée)"
+        const lastPrompt =
+          typeof lastState?.lastPrompt === "string" ? `"${lastState.lastPrompt}"` : "(aucune requête enregistrée)"
         const state =
           `${CONTEXT_MARKER} État pédagogique à préserver dans le résumé de compaction:\n` +
-          `- Mémoire: ${memoryPaths.primary}/ (fallback ${memoryPaths.fallback})\n` +
+          `- Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}\n` +
           `- Topics & levels:\n${topicsSummary || "(aucun topic encore)"}\n` +
           `- Règles à conserver: jamais oui/non, max 1 question BUILD, toujours maj mémoire, Context7 pour APIs framework, respecter skip.\n` +
           `- Mode actif: ${mode}\n` +
-          `- Dernière question posée: ${lastQuestion}`
+          `- Dernière requête utilisateur: ${lastPrompt}\n` +
+          `- La dernière question POSÉE par le mentor vit dans topics/<slug>.md et quiz-log.md — reprendre le fil pédagogique à partir de la mémoire.`
 
         try {
           if (Array.isArray(output?.context)) output.context.push(state)
