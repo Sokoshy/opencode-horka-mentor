@@ -33,11 +33,15 @@ patterns or APIs that no longer exist.
 
 A teacher who says wrong things is worse than no teacher.
 
-Install Context7 MCP server following the official instructions:
-  https://github.com/upstash/context7
+The horka-mentor plugin declares the Context7 MCP server itself
+(via ctx.mcp.transform). If it is missing, the plugin is probably
+not installed or loaded.
 
-Then add it to your Claude Code MCP settings and restart.
-Invoke /mentor again after setup.
+Install the plugin:
+  opencode2 plugin add github:<user>/opencode-horka-mentor
+  (dev local : .opencode/plugins/horka-mentor.ts)
+
+Then run `opencode2 service restart` and invoke /mentor again.
 ```
 
 **Exception** : si l'utilisateur invoque `/mentor --no-context7`, affiche ce warning (adapte a la langue detectee) et continue :
@@ -52,7 +56,7 @@ En mode `--no-context7`, ne JAMAIS donner d'exemples utilisant des API specifiqu
 
 ## Step 1 — Cold Start (premiere interaction uniquement)
 
-**Verifie** si `{{memoryPath}}/dev-profile.md` existe (fallback `{{memoryPathFallback}}/dev-profile.md` si `compatClaudePath: true` — voir `opencode.jsonc` `options.memoryPath`).
+**Verifie** si `{{memoryPath}}/dev-profile.md` existe (fallback `{{memoryPathFallback}}/dev-profile.md` si ce chemin differe de `{{memoryPath}}` — cas de l'option `compatClaudePath: true`, voir `opencode.jsonc` `options.memoryPath`).
 
 ### Si le fichier N'EXISTE PAS :
 

@@ -53,7 +53,7 @@ Source : `plugins/horka-mentor/.claude-plugin/plugin.json` (raw) :
 | Enseignement | Analogies + doc officielle Context7 + exercices **avant** de coder |
 | Construction pas-à-pas | Explique les décisions, vérifie la compréhension à chaque bloc |
 | Suivi | `~/.claude/mentor/` avec niveaux `unknown → learning → understood → confident` par topic |
-| Quiz | Spaced repetition `J+1 → J+3 → J+7 → J+14 → J+30 → tous les 30j` |
+| Quiz | Spaced repetition (échelle J+1→J+30, voir `src/skills/horka-mentor-quiz.md` / `src/references/level-up-rules.md`) |
 | Adaptation | Langue, vitesse d'apprentissage, stacks antérieures (traduction cross-stack), mode directif pour sécurité |
 
 ### 1.3 Skill `horka-mentor` (principal)
@@ -104,7 +104,7 @@ Workflow en 6 étapes (source : `skills/horka-mentor-quiz/SKILL.md`) :
 
 ### 1.6 Mémoire & progression
 
-- Localisation : `~/.claude/mentor/` (global, cross-projets, privé).
+- Localisation : `~/.claude/mentor/` (global, cross-projets, privé). *Port Opencode : le défaut est `~/.config/opencode/mentor/` — `~/.claude/mentor/` n'est qu'un fallback de compat (`compatClaudePath: true`).*
 - Fichiers : `dev-profile.md`, `quiz-log.md`, `topics/*.md`.
 - Niveaux par topic (pas global) : `unknown → learning → understood → confident`.
 
@@ -481,7 +481,7 @@ Config `opencode.jsonc` :
 {
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
-    { "package": "opencode-horka-mentor", "options": { "proactive": true, "memoryPath": "~/.claude/mentor" } }
+    { "package": "opencode-horka-mentor", "options": { "proactive": true, "memoryPath": "~/.config/opencode/mentor" } }
   ]
 }
 ```

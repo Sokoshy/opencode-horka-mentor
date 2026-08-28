@@ -52,9 +52,7 @@ Le `package.json` expose `".": "./src/index.ts"` (`type: module`) pour `opencode
 
 - `memoryPath` : dossier où sont stockés `dev-profile.md`, `quiz-log.md`, `topics/*.md`. Expand `~`. Les skills reçoivent le chemin résolu via `{{memoryPath}}`.
 - `compatClaudePath` : si `true`, le plugin et les skills lisent d'abord `memoryPath`, puis `~/.claude/mentor/` en fallback (migration Claude Code). Hydratation `{{memoryPathFallback}}`.
-- `context7` : URL MCP remote Context7 (doc officielle : `https://mcp.context7.com/mcp`, streamable HTTP). `false` désactive la déclaration.
-- `context7ApiKey` : si présent, ajouté en header `Authorization: Bearer …` au serveur MCP. Peut aussi utiliser `CONTEXT7_API_KEY` d'env.
-- Si l'utilisateur déclare déjà `context7` dans son `opencode.jsonc`, le plugin ne le surcharge pas (préserve son auth).
+- `context7` / `context7ApiKey` : voir la section Context7 ci-dessous (comportement, clé API, non-surcharge d'une config existante).
 
 ---
 
@@ -96,7 +94,7 @@ Le skill principal a `autoinvoke: true` — le modèle peut l'invoquer spontané
 
 - **Source de vérité** : `topics/<slug>.md` (Status 7 champs + Context + Teaching/Assessment History). `quiz-log.md` = index de convenance.
 - **Niveaux** : `unknown → learning → understood → confident` (voir `src/references/level-up-rules.md`).
-- **Spaced repetition** : `J+1 → J+3 → J+7 → J+14 → J+30 → tous les 30j` (`interval_step` 1–6).
+- **Spaced repetition** : échelle J+1→J+30 (`interval_step` 1–6) — voir le skill `src/skills/horka-mentor-quiz.md` et `src/references/level-up-rules.md`.
 - **Tool** `horka_mentor_progress` (namespace `horka` → nom effectif `horka_mentor_progress`) expose :
   - `get_profile` → `dev-profile.md`
   - `list_topics` → scan `topics/` + parse Status
@@ -111,12 +109,11 @@ Templates : `src/references/memory-templates.md` (adapté chemins Opencode).
 
 ## Context7
 
-- Déclaré automatiquement via `ctx.mcp.transform()` : `{type:"remote", url:"https://mcp.context7.com/mcp"}` (+ `headers.Authorization` si clé).
-- Ne surcharge pas une config `context7` existante.
+- Déclaré automatiquement via `ctx.mcp.transform()` : `{type:"remote", url:"https://mcp.context7.com/mcp"}` (+ `headers.Authorization` si clé). `context7: false` dans les options désactive la déclaration.
+- Ne surcharge pas une config `context7` existante (préserve son auth).
 - Skills : **Step 0 Gate MANDATORY** (`horka-mentor` bloque sans Context7 avec `MENTOR BLOCKED`, sauf `--no-context7` → warning + pseudocode ; `horka-mentor-quiz` gate souple → warning `[Context7 indisponible]` et limite à `explain` + APIs natives).
-- Tools exposés : `context7_resolve-library-id` / `context7_query-docs` (alias `mcp_context7_…` selon version Opencode — les skills tentent les candidats, et le hook `context` injecte les noms exacts détectés dans `event.tools`).
-
-Obtenir une clé gratuite (optionnelle, lève les rate limits) : https://context7.com/dashboard → `CONTEXT7_API_KEY`.
+- Tools exposés : `context7_resolve-library-id` / `context7_query-docs` (alias `mcp_context7_…` selon version Opencode — les skills tentent les candidats, et le hook `context` injecte les noms exacts détectés dans `event.tools`). Test rapide : appeler `context7_resolve-library-id` avec `query:"test"` — doit répondre (même sans résultats).
+- Clé API optionnelle : ajoutée en header `Authorization: Bearer …` (sinon serveur fonctionnel mais rate-limité). Obtenir une clé gratuite : https://context7.com/dashboard → `CONTEXT7_API_KEY`.
 
 ---
 
@@ -140,10 +137,7 @@ Les skills lisent ces fichiers via `{{referencesDir}}/…` (hydraté en chemin a
 
 ## Troubleshooting Context7
 
-- `MENTOR BLOCKED` → vérifie `ctx.mcp.list()` contient `context7` (le plugin le déclare) et `opencode2 service restart`. Sans clé API le serveur fonctionne mais rate-limité.
-- Bypass : `/mentor --no-context7` → pseudocode uniquement, jamais d'API framework.
-- Quiz sans Context7 : continue avec warning, questions `explain` uniquement.
-- Vérifier un appel réel : dans une session, demande au modèle d'appeler `context7_resolve-library-id` avec `query:"test"` — doit répondre (même sans résultats).
+Le comportement et les correctifs (`MENTOR BLOCKED`, bypass `--no-context7`, gate souple du quiz, test d'un appel réel) sont décrits dans la section Context7 ci-dessus. Après install ou changement de config : `opencode2 service restart`.
 
 ---
 

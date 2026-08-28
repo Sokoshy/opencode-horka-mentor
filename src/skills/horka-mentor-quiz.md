@@ -29,7 +29,7 @@ Contrairement a /mentor, le quiz ne bloque PAS sans Context7 car les questions "
 
 ## Step 1 — Prerequisites Check
 
-1. **Verifie** que `{{memoryPath}}/dev-profile.md` existe (fallback `{{memoryPathFallback}}/dev-profile.md` si `compatClaudePath: true`). Si non :
+1. **Verifie** que `{{memoryPath}}/dev-profile.md` existe (fallback `{{memoryPathFallback}}/dev-profile.md` si ce chemin differe de `{{memoryPath}}` — cas de l'option `compatClaudePath: true`). Si non :
 ```
 Pas de profil mentor. Lance /mentor d'abord pour creer ton profil et couvrir tes premiers sujets.
 ```
