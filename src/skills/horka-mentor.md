@@ -38,7 +38,7 @@ The horka-mentor plugin declares the Context7 MCP server itself
 not installed or loaded.
 
 Install the plugin:
-  opencode2 plugin add github:<user>/opencode-horka-mentor
+  opencode2 plugin add github:Sokoshy/opencode-horka-mentor
   (dev local : .opencode/plugins/horka-mentor.ts)
 
 Then run `opencode2 service restart` and invoke /mentor again.

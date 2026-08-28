@@ -2,7 +2,7 @@
 
 Teaching AI mentor for junior developers — **port à parité 100% du plugin Claude Code `horka-mentor` vers Opencode 2** (`@opencode-ai/plugin@beta`). 2 skills complets (5+6 étapes), 3 références, 4 commandes de config, 2 modes learn/build, mode directif sécurité, proactif avec throttle, spaced repetition complet, cross-stack translation, regression detection, 10+7 règles absolues, templates mémoire.
 
-> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : Opencode 2. Distribution **GitHub** (`opencode2 plugin add github:<user>/opencode-horka-mentor`), pas de publish npm. Basé sur `RESEARCH.md` + `PLAN.md`.
+> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : Opencode 2. Distribution **GitHub** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), pas de publish npm. Basé sur `RESEARCH.md` + `PLAN.md`.
 
 ---
 
@@ -11,7 +11,7 @@ Teaching AI mentor for junior developers — **port à parité 100% du plugin Cl
 ### Depuis GitHub (recommandé)
 
 ```sh
-opencode2 plugin add github:<user>/opencode-horka-mentor
+opencode2 plugin add github:Sokoshy/opencode-horka-mentor
 opencode2 plugin list        # doit afficher horka-mentor
 opencode2 service restart
 ```
@@ -37,7 +37,7 @@ Le `package.json` expose `".": "./src/index.ts"` (`type: module`) pour `opencode
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
     {
-      "package": "opencode-horka-mentor", // ou "github:<user>/opencode-horka-mentor" / chemin local
+      "package": "opencode-horka-mentor", // ou "github:Sokoshy/opencode-horka-mentor" / chemin local
       "options": {
         "memoryPath": "~/.config/opencode/mentor",   // défaut — global, cross-projets
         "proactive": true,                            // défaut true

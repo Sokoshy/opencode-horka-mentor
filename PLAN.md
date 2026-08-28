@@ -9,7 +9,7 @@
 
 **Objectif** : port à parité 100% du plugin Claude Code `horka-mentor` vers Opencode 2. Le plugin Opencode doit couvrir **toutes** les fonctionnalités du source : 2 skills complets (5+6 étapes), 3 références, 4 commandes de config, 2 modes (learn/build), mode directif sécurité, proactif avec throttle, spaced repetition complet, translation cross-stack, regression detection, 10+7 règles absolues, tous les templates mémoire.
 
-**Distribution** : GitHub (`opencode2 plugin add github:<user>/opencode-horka-mentor`), **pas de publish npm**.
+**Distribution** : GitHub (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), **pas de publish npm**.
 
 **Rien n'est optionnel.** Les tickets marqués "optionnel" dans le plan précédent deviennent **obligatoires**.
 
@@ -275,7 +275,7 @@ Le hook proactif est **minimaliste** : injection système + throttle retry-safe.
 
 | Ticket | Tâche | Détail | Dépend |
 |---|---|---|---|
-| **T5.1** | `README.md` complet | Install `opencode2 plugin add github:<user>/opencode-horka-mentor`, `opencode.jsonc` exemple complet (tous les `options`), dev local `.opencode/plugins/`, compat Claude Code, liste toutes les commandes (`mentor learn/build/--no-context7/proactif on/off/profil/topics`, `mentor-quiz`, `mentor-quiz <topic>`, `mentor-quiz all`), troubleshooting Context7 | T2.3 |
+| **T5.1** | `README.md` complet | Install `opencode2 plugin add github:Sokoshy/opencode-horka-mentor`, `opencode.jsonc` exemple complet (tous les `options`), dev local `.opencode/plugins/`, compat Claude Code, liste toutes les commandes (`mentor learn/build/--no-context7/proactif on/off/profil/topics`, `mentor-quiz`, `mentor-quiz <topic>`, `mentor-quiz all`), troubleshooting Context7 | T2.3 |
 | **T5.2** | `opencode.jsonc` exemple + `.opencode/plugins/horka-mentor.ts` dev | Fichier exemple pour `opencode2 service restart` rapide | T2.1 |
 
 **Exit** : README couvre 100% des commandes, exemple `opencode.jsonc` testé.
@@ -286,7 +286,7 @@ Le hook proactif est **minimaliste** : injection système + throttle retry-safe.
 |---|---|---|---|
 | **T6.1** | Tests fonctionnels **mentor** (8 tests) | 1. Cold start 4 questions → `dev-profile.md` conforme template<br>2. BUILD 1 question max → code `// Why:` par blocs, maj `unknown→learning`<br>3. LEARN 2–3 questions → analogie+Context7 minimal→complexe+exercice<br>4. Prérequis backstep 2 niveaux + bridge 3e niveau<br>5. Pushback `je connais` → re-ancre predict<br>6. `--no-context7` → warning + pseudocode seul<br>7. DIRECTIF `auth JWT` (batch 4 lookups) → vulnérable→secure+quiz, `unknown→understood` si solid<br>8. `proactif on/off`, `profil`, `topics`, `skip`→`needs-revisit`, cross-stack, regression | T4.2, T3.2 |
 | **T6.2** | Tests fonctionnels **quiz** (7 tests) | 1. Gate souple sans Context7 (warning, que `explain`)<br>2. Spaced `next_review<=today` → 3 plus en retard<br>3. Ciblé `mentor-quiz async` (trouvé/pas trouvé)<br>4. `all` tous topics<br>5. Évaluation `solid/shaky/missed` → levels + `next_review` (`J+1→J+3→J+7→J+14→J+30`, `shaky` garde, `missed` reset, 3 missed→`needs-reteach` J+3)<br>6. `interval_step` 1–6 tracké<br>7. Bilan `BILAN QUIZ` + `à revoir avec /mentor` | T6.1 |
-| **T6.3** | Tests système | **Install Git : `opencode2 plugin add github:<user>/opencode-horka-mentor` dans un projet vierge** (+ `aube pack` → install depuis le tarball comme test secondaire), `opencode2 plugin list` OK, `touch .opencode/plugins/…` reload OK, `opencode2 service restart` OK, appel réel d'un tool Context7 depuis une session OK, tool progress appelable par l'agent (via log d'exécution ou mini-session de test) | T6.2 |
+| **T6.3** | Tests système | **Install Git : `opencode2 plugin add github:Sokoshy/opencode-horka-mentor` dans un projet vierge** (+ `aube pack` → install depuis le tarball comme test secondaire), `opencode2 plugin list` OK, `touch .opencode/plugins/…` reload OK, `opencode2 service restart` OK, appel réel d'un tool Context7 depuis une session OK, tool progress appelable par l'agent (via log d'exécution ou mini-session de test) | T6.2 |
 
 **Exit** : 15/15 tests passent, parité déclarée.
 
@@ -320,7 +320,7 @@ Le spike **T2.0** bloque T2.2–T2.4 (nom d'outil MCP, `namespace`, structure op
 
 ## 6. Décisions à trancher avant T1.1 (avec défauts pour parité)
 
-1. **Nom npm** : `opencode-horka-mentor` (défaut) — **distribution GitHub, pas de publish npm** : `opencode2 plugin add github:<user>/opencode-horka-mentor`. Le `name` package.json reste l'identifiant affiché par `plugin list`. Valider le nom et le repo GitHub cible.
+1. **Nom npm** : `opencode-horka-mentor` (défaut) — **distribution GitHub, pas de publish npm** : `opencode2 plugin add github:Sokoshy/opencode-horka-mentor`. Le `name` package.json reste l'identifiant affiché par `plugin list`. Valider le nom et le repo GitHub cible.
 2. **Chemin mémoire** : défaut `~/.config/opencode/mentor` + `options.memoryPath: "~/.claude/mentor"` pour compat Claude Code (défaut proposé : `~/.config/opencode/mentor`, fallback `~/.claude/mentor` si `compatClaudePath:true`).
 3. **URL Context7** : **TRANCHÉE** — `https://mcp.context7.com/mcp` (remote, streamable HTTP) est la doc officielle Context7 pour Opencode (context7.com/docs + upstash-context7.mintlify.app). Fonctionne sans clé API (rate limits réduits) ; clé gratuite optionnelle sur context7.com/dashboard via header `Authorization: Bearer` (ou `CONTEXT7_API_KEY`). Le spike T2.0 ② ne fait qu'un smoke test.
 4. **Hook proactif** : **TRANCHÉ** — scope minimaliste (injection + throttle retry-safe), détection INTERVENE déléguée au modèle via skill `autoinvoke: true` + tool `check_proactive`. Pas de détection keywords en TS.

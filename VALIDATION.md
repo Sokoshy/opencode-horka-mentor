@@ -50,7 +50,7 @@ Deux catégories :
 
 ## T6.3 — Tests système
 
-- [ ] Install Git : `opencode2 plugin add github:<user>/opencode-horka-mentor` dans un projet vierge
+- [ ] Install Git : `opencode2 plugin add github:Sokoshy/opencode-horka-mentor` dans un projet vierge
 - [ ] `aube pack` → install depuis le tarball (test secondaire)
 - [ ] `opencode2 plugin list` OK
 - [ ] `touch .opencode/plugins/…` reload OK
