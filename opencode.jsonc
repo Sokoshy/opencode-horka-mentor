@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    {
+      "package": "./.opencode/plugins/horka-mentor.ts",
+      "options": {
+        "memoryPath": "~/.config/opencode/mentor",
+        "proactive": true,
+        "context7": "https://mcp.context7.com/mcp"
+        // "context7ApiKey": "{env:CONTEXT7_API_KEY}", // optionnel — clé gratuite sur context7.com/dashboard
+        // "compatClaudePath": false                // true pour lire aussi ~/.claude/mentor/ en fallback
+      }
+    }
+  ]
+}
