@@ -241,8 +241,16 @@ export default Plugin.define({
     // 2. Commands — mentor + mentor-quiz + alias quiz/revision
     // -----------------------------------------------------------------------
     await ctx.command.transform((draft) => {
-      // Enregistre une commande qui passe le prompt à la session avec le skill attaché
-      const registerCommand = (name: string, description: string, skillId?: string) => {
+      // Enregistre une commande qui passe le prompt à la session avec le skill attaché.
+      // modeHint = sous-commande dédiée (mentor-learn / mentor-build) : le mode est fixé
+      // par la commande, pas par le texte — l'autocomplete TUI ne complète que les noms
+      // de commandes + descriptions, donc chaque sous-commande est une commande.
+      const registerCommand = (
+        name: string,
+        description: string,
+        skillId?: string,
+        modeHint?: "learn" | "build",
+      ) => {
         draft.add({
           name,
           description,
@@ -267,12 +275,16 @@ export default Plugin.define({
             }
             // If text is empty (e.g. `/mentor` without args), provide a default trigger
             if (!payload.text || payload.text.trim() === "") {
-              payload.text = skillId === "horka-mentor-quiz" ? "quiz" : "mentor"
+              payload.text =
+                skillId === "horka-mentor-quiz" ? "quiz" : modeHint ? `mentor ${modeHint}` : "mentor"
             }
             // État persistant (T4.3): mode via SOUS-COMMANDE uniquement (M2a: "le skill parse"
             // le reste) + dernier prompt utilisateur. Ancré au début du texte — pas de
             // détection sur le contenu ("explique le build system" ≠ mode build).
-            const mode = /^\s*(?:mentor\s+)?(learn|build)\b/i.exec(payload.text)?.[1] as "learn" | "build" | undefined
+            // modeHint sert de fallback quand le texte ne parse pas (ex: `/mentor-learn sur X`).
+            const mode =
+              (/^\s*(?:mentor\s+)?(learn|build)\b/i.exec(payload.text)?.[1] as "learn" | "build" | undefined) ??
+              modeHint
             await updateState(sessionID, { lastPrompt: payload.text, ...(mode ? { mode } : {}) })
             await ctx.session.prompt(payload)
           },
@@ -280,6 +292,18 @@ export default Plugin.define({
       }
 
       registerCommand("mentor", "Mentor pédagogique (learn/build/profil/topics/proactif)", "horka-mentor")
+      registerCommand(
+        "mentor-learn",
+        "Mentor mode LEARN — apprendre un concept (1 question ouverte max)",
+        "horka-mentor",
+        "learn",
+      )
+      registerCommand(
+        "mentor-build",
+        "Mentor mode BUILD — construire sur un concept (évaluation max 1 question)",
+        "horka-mentor",
+        "build",
+      )
       registerCommand("mentor-quiz", "Quiz spaced repetition", "horka-mentor-quiz")
       registerCommand("quiz", "Alias mentor-quiz", "horka-mentor-quiz")
       registerCommand("revision", "Alias mentor-quiz", "horka-mentor-quiz")
