@@ -498,13 +498,8 @@ export default Plugin.define({
         `Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}. ${context7Hint} ` +
         `Règles: profil privé, commentaires code en anglais, topics font foi sur quiz-log, respecter skip (needs-revisit).`
 
-      try {
-        event.system.push({ text: systemText } as any)
-      } catch {
-        try {
-          event.system.push({ type: "text", text: systemText } as any)
-        } catch {}
-      }
+      // LLM.SystemPart exige `type: "text"` (schéma validé strictement depuis beta-19271)
+      event.system.push({ type: "text", text: systemText } as any)
     })
 
     // -----------------------------------------------------------------------
