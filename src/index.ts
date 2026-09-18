@@ -1,4 +1,4 @@
-import { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 import { readFile, readdir, stat } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -132,7 +132,7 @@ export default Plugin.define({
     const context7ApiKey =
       typeof opts.context7ApiKey === "string" ? (opts.context7ApiKey as string) : undefined
 
-    // Load skill markdowns via fs (Node standard APIs only — no Bun.file)
+    // Load skill markdowns via fs (Node/Bun standard APIs — pas de Bun.file spécifique)
     // Primary: relative to this file; fallback: locDir
     const mentorCandidates = [
       join(pkgDir, "skills", "horka-mentor.md"),
@@ -214,27 +214,18 @@ export default Plugin.define({
         name: "Horka Mentor" as any,
         description:
           "Teaching AI mentor — learn/build/proactif/spaced repetition. Invoke: mentor, mentor learn, mentor build.",
-        location: resolve(mentorLocation) as unknown as string as any,
+        path: resolve(mentorLocation) as unknown as string as any,
         content: mentorContent,
+        autoinvoke: true,
       } as any)
       draft.add({
         id: "horka-mentor-quiz" as any,
         name: "Horka Mentor Quiz" as any,
         description: "Quiz spaced repetition. Invoke: mentor quiz, quiz, revision.",
-        location: resolve(quizLocation) as unknown as string as any,
+        path: resolve(quizLocation) as unknown as string as any,
         content: quizContent,
+        autoinvoke: false,
       } as any)
-      // autoinvoke: true on horka-mentor reproduces proactive source behavior
-      try {
-        draft.update("horka-mentor", (s: any) => {
-          s.autoinvoke = true
-        })
-      } catch {}
-      try {
-        draft.update("horka-mentor-quiz", (s: any) => {
-          s.autoinvoke = false
-        })
-      } catch {}
     })
 
     // -----------------------------------------------------------------------
@@ -522,58 +513,52 @@ export default Plugin.define({
         `Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}. ${context7Hint} ` +
         `Règles: profil privé, commentaires code en anglais, topics font foi sur quiz-log, respecter skip (needs-revisit).`
 
-      // LLM.SystemPart exige `type: "text"` (schéma validé strictement depuis beta-19271)
+      // LLM.SystemPart exige `type: "text"` (schéma validé OpenCode v2)
       event.system.push({ type: "text", text: systemText } as any)
     })
 
     // -----------------------------------------------------------------------
-    // 7. Hook compaction — préservation état pédagogique
-    //    Pas de hook typé "experimental.session.compacting" dans l'API beta actuelle ;
-    //    on tente l'enregistrement si disponible (as any), sinon on s'appuie sur le
-    //    context hook ci-dessus + l'état filesystem (source de vérité).
-    //    On pousse l'état RÉEL (T4.3): topics & levels via readTopics, mode actif et
-    //    dernier prompt utilisateur depuis le record state:<sid> (prompt hook + commandes) ;
-    //    la question posée par le mentor reste dans topics/<slug>.md / quiz-log.md.
+    // 7. Hook compaction — préservation état pédagogique (API v2: "compaction")
+    //    Le hook reçoit le transcript en cours de résumé (event.messages) et les
+    //    instructions système (event.system). On injecte l'état réel (topics &
+    //    levels via readTopics, mode + dernier prompt via state:<sid>) en système
+    //    pour qu'il survive dans le résumé. On ne set PAS event.result (on laisse
+    //    le modèle résumer).
     // -----------------------------------------------------------------------
-    try {
-      await (ctx.session.hook as any)("experimental.session.compacting", async (input: any, output: any) => {
-        const sid: string | undefined = input?.sessionID ?? input?.sessionId
-        if (!sid) return
-        let active: unknown = null
-        try {
-          active = await ctx.storage.get(`active:${sid}`)
-        } catch {}
-        if (!active && !seenHashes.has(sid)) return
-        // Topics & levels réels depuis le filesystem
-        const topics = await readTopics(join(memoryPaths.primary, "topics"))
-        const topicsSummary = topics
-          .slice(0, 20)
-          .map((t) => `- ${t.slug}: ${t.level} (next: ${t.next_review})`)
-          .join("\n")
-        // Mode actif + dernier prompt utilisateur réels (record state:<sid>)
-        let lastState: any = null
-        try {
-          lastState = await ctx.storage.get(`state:${sid}`)
-        } catch {}
-        const mode = typeof lastState?.mode === "string" ? lastState.mode : "(mode non détecté)"
-        const lastPrompt =
-          typeof lastState?.lastPrompt === "string" ? `"${lastState.lastPrompt}"` : "(aucune requête enregistrée)"
-        const state =
-          `${CONTEXT_MARKER} État pédagogique à préserver dans le résumé de compaction:\n` +
-          `- Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}\n` +
-          `- Topics & levels:\n${topicsSummary || "(aucun topic encore)"}\n` +
-          `- Règles à conserver: jamais oui/non, max 1 question BUILD, toujours maj mémoire, Context7 pour APIs framework, respecter skip.\n` +
-          `- Mode actif: ${mode}\n` +
-          `- Dernière requête utilisateur: ${lastPrompt}\n` +
-          `- La dernière question POSÉE par le mentor vit dans topics/<slug>.md et quiz-log.md — reprendre le fil pédagogique à partir de la mémoire.`
+    await ctx.session.hook("compaction", async (event: any) => {
+      const sid: string | undefined = event?.sessionID ?? event?.sessionId
+      if (!sid) return
+      let active: unknown = null
+      try {
+        active = await ctx.storage.get(`active:${sid}`)
+      } catch {}
+      if (!active && !seenHashes.has(sid)) return
+      // Topics & levels réels depuis le filesystem
+      const topics = await readTopics(join(memoryPaths.primary, "topics"))
+      const topicsSummary = topics
+        .slice(0, 20)
+        .map((t) => `- ${t.slug}: ${t.level} (next: ${t.next_review})`)
+        .join("\n")
+      // Mode actif + dernier prompt utilisateur réels (record state:<sid>)
+      let lastState: any = null
+      try {
+        lastState = await ctx.storage.get(`state:${sid}`)
+      } catch {}
+      const mode = typeof lastState?.mode === "string" ? lastState.mode : "(mode non détecté)"
+      const lastPrompt =
+        typeof lastState?.lastPrompt === "string" ? `"${lastState.lastPrompt}"` : "(aucune requête enregistrée)"
+      const state =
+        `${CONTEXT_MARKER} État pédagogique à préserver dans le résumé de compaction:\n` +
+        `- Mémoire: ${memoryPaths.primary}/${memoryPaths.differs ? ` (fallback ${memoryPaths.fallback})` : ""}\n` +
+        `- Topics & levels:\n${topicsSummary || "(aucun topic encore)"}\n` +
+        `- Règles à conserver: jamais oui/non, max 1 question BUILD, toujours maj mémoire, Context7 pour APIs framework, respecter skip.\n` +
+        `- Mode actif: ${mode}\n` +
+        `- Dernière requête utilisateur: ${lastPrompt}\n` +
+        `- La dernière question POSÉE par le mentor vit dans topics/<slug>.md et quiz-log.md — reprendre le fil pédagogique à partir de la mémoire.`
 
-        try {
-          if (Array.isArray(output?.context)) output.context.push(state)
-          else if (output && typeof output === "object") output.context = [state]
-        } catch {}
-      })
-    } catch {
-      // Hook non supporté sur cette version beta — le context hook + FS state suffisent ; pas bloquant.
-    }
+      try {
+        if (Array.isArray(event?.system)) event.system.push({ type: "text", text: state } as any)
+      } catch {}
+    })
   },
 })
