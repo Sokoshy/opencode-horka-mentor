@@ -1,8 +1,8 @@
 # opencode-horka-mentor
 
-Teaching AI mentor for junior developers — **port à parité 100% du plugin Claude Code `horka-mentor` vers Opencode 2** (`@opencode-ai/plugin@beta`). 2 skills complets (5+6 étapes), 3 références, 4 commandes de config, 2 modes learn/build, mode directif sécurité, proactif avec throttle, spaced repetition complet, cross-stack translation, regression detection, 10+7 règles absolues, templates mémoire.
+Teaching AI mentor for junior developers — **port à parité 100% du plugin Claude Code `horka-mentor` vers OpenCode 2** (`@opencode/plugin@^2.0.7`, runtime bun). 2 skills complets (5+6 étapes), 3 références, 4 commandes de config, 2 modes learn/build, mode directif sécurité, proactif avec throttle, spaced repetition complet, cross-stack translation, regression detection, 10+7 règles absolues, templates mémoire.
 
-> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : Opencode 2. Distribution **GitHub** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), pas de publish npm.
+> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → Cible : OpenCode 2. Distribution **GitHub** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`), pas de publish npm.
 
 ---
 
@@ -16,11 +16,11 @@ opencode2 plugin list        # doit afficher horka-mentor
 opencode2 service restart
 ```
 
-### Dev local (sans npm)
+### Dev local (bun)
 
 ```sh
 git clone <repo> && cd opencode-horka-mentor
-npm install
+bun install
 # Le plugin est auto-découvert via .opencode/plugins/horka-mentor.ts (re-export de src/index.ts)
 opencode2 service restart
 touch .opencode/plugins/horka-mentor.ts   # force reload si besoin
@@ -121,7 +121,7 @@ Templates : `src/references/memory-templates.md` (adapté chemins Opencode).
 
 - **`session.hook("prompt")` proactif minimaliste** : injection d'un préfixe système léger si la requête implique un concept non couvert — throttle 2/session, idempotence retry-safe via `sessionID+hash(prompt)` + `ctx.storage` (`proactive:<sessionID>`), cooldown après `skip`. Le jugement INTERVENE est délégué au modèle (skill `autoinvoke` + tool `check_proactive`), pas de détection keywords TS.
 - **`session.hook("context")` avec dédup** : si session mentor active (`active:<sessionID>`), injecte un rappel système `[horka-mentor] …` une seule fois (dédup par marqueur), y compris détection dynamique des noms d'outils Context7 présents dans `event.tools`.
-- **`experimental.session.compacting` (best-effort)** : tente d'enregistrer le hook de compaction pour préserver l'état pédagogique (topics/levels/mode/question) dans `output.context` ; si non supporté sur cette version beta, le `context` hook + l'état FS assurent la continuité (non bloquant).
+- **`session.hook("compaction")` natif (API v2)** : injecte l'état pédagogique réel (topics/levels via FS, mode + dernier prompt via `state:<sessionID>`) dans `event.system` pour qu'il survive au résumé ; `event.result` n'est pas setté (le modèle résume).
 
 ---
 
@@ -144,12 +144,13 @@ Le comportement et les correctifs (`MENTOR BLOCKED`, bypass `--no-context7`, gat
 ## Développement
 
 ```sh
-npm run typecheck   # npx tsc --noEmit
+bun run typecheck   # tsc --noEmit
+bun test
 opencode2 service status
 opencode2 plugin list
 ```
 
-Compatibilité : `@opencode-ai/plugin@beta` (actuel : `0.0.0-beta-18414`). Tester le package installé, pas seulement le lien workspace (API beta).
+Compatibilité : `@opencode/plugin@^2.0.7` (testé sur OpenCode v2.0.7 via `opencode2`, runtime bun). Tester le package installé, pas seulement le lien workspace.
 
 ---
 
