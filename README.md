@@ -1,17 +1,17 @@
 # opencode-horka-mentor
 
-Mentor pédagogique pour développeurs juniors — port du plugin Claude Code `horka-mentor`
-vers Open Code. Runtime bun sur `@opencode/plugin@^2.0.7`.
+Pedagogical mentor for junior developers — port of the Claude Code `horka-mentor`
+plugin to OpenCode. Runtime: bun on `@opencode/plugin@^2.0.7`.
 
-- 2 skills (5 + 6 étapes), 3 références, 5+ commandes
-- 2 modes : `learn` (socratique) et `build` (code ensemble)
-- Mode directif pour les sujets sécurité + gate Context7 stricte
-- Proactif throttle 2/session, dédup retry-safe, cooldown déterministe
-- Spaced repetition J+1 → J+30, cross-stack, détection de régression
+- 2 skills (5 + 6 steps), 3 reference docs, 5+ commands
+- 2 modes: `learn` (Socratic exploration) and `build` (code together)
+- Security-directive mode + strict Context7 gate
+- Proactive throttling: 2 prompts/session, retry-safe dedup, deterministic cooldown
+- Spaced repetition J+1 → J+30, cross-stack translation, regression detection
 
-> Source : `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → cible Open Code.
-> Distribution **GitHub uniquement** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`),
-> aucun publish NPM requis.
+> Source: `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → target Open Code.
+> Distribution is **GitHub only** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`);
+> no NPM publish is required.
 
 ---
 
@@ -19,21 +19,22 @@ vers Open Code. Runtime bun sur `@opencode/plugin@^2.0.7`.
 
 ```sh
 opencode2 plugin add github:Sokoshy/opencode-horka-mentor
-opencode2 plugin list        # doit afficher horka-mentor
+opencode2 plugin list        # should show horka-mentor
 opencode2 service restart
 ```
 
-### Développement local
+### Local development
 
 ```sh
 git clone <repo> && cd opencode-horka-mentor
 bun install
-opencode2 service restart   # auto-découverte via .opencode/plugins/horka-mentor.ts
+opencode2 service restart   # auto-discovered via .opencode/plugins/horka-mentor.ts
 ```
 
-> **Important** : l'auto-découverte suffit. Ne mettez pas `.opencode/plugins/horka-mentor.ts`
-> dans `plugins` d'`opencode.jsonc` (sinon « configured plugin path must be a directory »).
-> Le `package.json` expose `".": "./src/index.ts"` pour `opencode2 plugin add`.
+> **Important**: auto-discovery is enough. Never put `.opencode/plugins/horka-mentor.ts`
+> into the `plugins` list of `opencode.jsonc` (otherwise:
+> "configured plugin path must be a directory").
+> `package.json` exposes `".": "./src/index.ts"` for `opencode2 plugin add`.
 
 ---
 
@@ -44,53 +45,53 @@ opencode2 service restart   # auto-découverte via .opencode/plugins/horka-mento
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
     {
-      "package": "opencode-horka-mentor", // ou "github:Sokoshy/opencode-horka-mentor" / chemin local
+      "package": "opencode-horka-mentor", // or "github:Sokoshy/opencode-horka-mentor" / local path
       "options": {
-        "memoryPath": "~/.config/opencode/mentor",   // défaut global, cross-projets
-        "proactive": true,                            // défaut true
-        "context7": "https://mcp.context7.com/mcp",   // false pour désactiver le MCP
-        "context7ApiKey": "{env:CONTEXT7_API_KEY}",   // optionnel — Bearer header
-        "compatClaudePath": false                     // true → fallback lecture ~/.claude/mentor
+        "memoryPath": "~/.config/opencode/mentor",   // default — global, cross-projects
+        "proactive": true,                            // default true
+        "context7": "https://mcp.context7.com/mcp",   // false to disable the MCP
+        "context7ApiKey": "{env:CONTEXT7_API_KEY}",   // optional — Bearer header
+        "compatClaudePath": false                     // true → fall back to ~/.claude/mentor
       }
     }
   ]
 }
 ```
 
-| Option | Rôle |
+| Option | Purpose |
 |---|---|
-| `memoryPath` | Dossier mémoire (`dev-profile.md`, `quiz-log.md`, `topics/*.md`). `~` est expansé. Injecté dans les skills via `{{memoryPath}}`. |
-| `compatClaudePath` | `true` = lit d'abord `memoryPath`, puis `~/.claude/mentor/` en fallback (migration Claude Code). |
-| `context7` / `context7ApiKey` | Déclare le MCP remote Context7 et lui passe la clé Bearer (voir section Context7). |
-| `proactive` | Active/désactive l'injection proactif minime. |
+| `memoryPath` | Memory directory (`dev-profile.md`, `quiz-log.md`, `topics/*.md`). `~` is expanded. Injected into skills via `{{memoryPath}}`. |
+| `compatClaudePath` | `true` reads `memoryPath` first, then `~/.claude/mentor/` as fallback (Claude Code migration). |
+| `context7` / `context7ApiKey` | Declares the remote Context7 MCP and its Bearer key (see Context7 section). |
+| `proactive` | Enables/disables minimal proactive injection. |
 
-`ctx.storage` est un **miroir write-only** — le filesystem reste source de vérité.
+`ctx.storage` is a **write-only mirror** — filesystem stays the source of truth.
 
 ---
 
-## Commandes
+## Commands
 
-| Commande | Description |
+| Command | Description |
 |---|---|
-| `/mentor` | Mode **build** par défaut (code ensemble) |
-| `/mentor learn` | Mode **learn** (exploration socratique) |
-| `/mentor build` | Alias explicite du mode build |
-| `/mentor --no-context7` | Bypass Context7 → warning + pseudocode/concepts uniquement |
-| `/mentor proactif on\|off` | Active/désactive le proactif |
-| `/mentor profil` | Affiche `dev-profile.md` |
-| `/mentor topics` | Liste les topics couverts avec niveaux |
-| `/mentor-status` | Diagnostic : mémoire, Context7, proactif, topics dus |
-| `/mentor-quiz` / `/quiz` / `/revision` | Spaced repetition (3 topics en retard, ciblé, ou `all`) |
+| `/mentor` | Default **build** mode (code together) |
+| `/mentor learn` | **learn** mode (Socratic exploration) |
+| `/mentor build` | Explicit alias for build mode |
+| `/mentor --no-context7` | Bypass Context7 → warning + pseudocode/concepts only |
+| `/mentor proactif on\|off` | Enable/disable proactive mode |
+| `/mentor profil` | Show `dev-profile.md` |
+| `/mentor topics` | List covered topics with levels |
+| `/mentor-status` | Diagnostics: memory, Context7, proactivity, due topics |
+| `/mentor-quiz` / `/quiz` / `/revision` | Spaced repetition (3 due topics, specific topic, or `all`) |
 
-Le skill principal a `autoinvoke: true` — le modèle peut l'invoquer sans commande
-(proactif).
+The main skill has `autoinvoke: true` — the model can invoke it without a command
+(proactive flow).
 
 ---
 
-## Mémoire
+## Memory
 
 ```
-~/.config/opencode/mentor/        # ou ~/.claude/mentor/ si compat
+~/.config/opencode/mentor/        # or ~/.claude/mentor/ with compat
 ├── dev-profile.md
 ├── quiz-log.md
 └── topics/
@@ -98,59 +99,59 @@ Le skill principal a `autoinvoke: true` — le modèle peut l'invoquer sans comm
     └── ...
 ```
 
-- **Source de vérité** : `topics/<slug>.md` (Status 7 champs + Context + historique).
-- **Niveaux** : `unknown → learning → understood → confident`
+- **Source of truth**: `topics/<slug>.md` (Status 7 fields + Context + history).
+- **Levels**: `unknown → learning → understood → confident`
   (`src/references/level-up-rules.md`).
-- **Spaced repetition** : J+1 → J+30 (`interval_step` 1–6).
-- **Tool** `horka_mentor_progress` (namespace `horka`) expose : `get_profile`,
+- **Spaced repetition**: J+1 → J+30 (`interval_step` 1–6).
+- **Tool** `horka_mentor_progress` (namespace `horka`) exposes: `get_profile`,
   `list_topics`, `get_topic`, `get_quiz_log`, `check_proactive`, `record_proactive`.
-- En cas de divergence, le filesystem gagne (storage = cache trace).
+- On divergence, filesystem wins (storage = cache/trace).
 
-Templates dans `src/references/memory-templates.md`.
+Templates live in `src/references/memory-templates.md`.
 
 ---
 
 ## Context7
 
-- Déclaré automatiquement via `ctx.mcp.transform()` :
+- Declared automatically via `ctx.mcp.transform()`:
   `{type:"remote", url:"https://mcp.context7.com/mcp"}` +
-  `Authorization: Bearer …` si clé.
-- Ne surcharge pas une config `context7` existante.
-- Gate **dur par défaut** : le skill bloque sans Context7 (`MENTOR BLOCKED`), sauf
-  `--no-context7` → warning + pseudocode.
-- Quiz : gate **souple** → warning `[Context7 indisponible]` → limite à `explain` + APIs natives.
-- `context7: false` désactive la déclaration.
-- **Le fetch web n'est pas un substitut automatique.**
+  `Authorization: Bearer …` if key.
+- Never overrides an existing `context7` config.
+- **Hard gate by default**: the skill blocks without Context7 (`MENTOR BLOCKED`),
+  except with `--no-context7` → warning + pseudocode.
+- Quiz gate is **soft**: `[Context7 indisponible]` warning → limits to `explain` + native APIs.
+- `context7: false` disables the declaration.
+- **Web fetch is not an automatic substitute.**
 
-Test rapide : appeler `context7_resolve-library-id` avec `query:"test"` — le serveur
-doit répondre (même sans résultats). Clé gratuite : https://context7.com/dashboard.
-
----
-
-## Hooks (résumé)
-
-- **`prompt`** (proactif) : throttle 2/session via `ctx.storage` (`proactive:<sessionID>` :
-  `count`, `seen`, `cooldown`), dédup par hash du prompt, cooldown après `skip` (via
-  `record_proactive`, fallback markdown). Jugement `INTERVENE/NEVER` délégué au modèle.
-- **`context`** : injection `[horka-mentor] …` une fois (dédup par marqueur), détection
-  dynamique des outils Context7, reminder quiz unique (`reminderDone:<sessionID>`).
-- **`compaction`** : injecte topics/levels + `mode` + dernier prompt (`state:<sessionID>`),
-  `event.result` laissé au modèle.
+Quick test: call `context7_resolve-library-id` with `query:"test"` — the server should
+answer (even without results). Free key: https://context7.com/dashboard.
 
 ---
 
-## Références
+## Hooks (summary)
 
-- `src/references/pedagogy.md` — 5 méthodes d'évaluation, INTERVENE/COMMENT INLINE/NEVER,
-  3 profondeurs, critères ALL/ANY, Security-Critical DIRECTIVE+batch, adaptation
-  fast/slow/disengaged, dependency map, Dunning-Kruger, cross-stack, session length.
-- `src/references/level-up-rules.md` — table des 6 transitions de niveau.
-- `src/references/memory-templates.md` — templates mémoire adaptés aux chemins Opencode.
-- Vérification conceptuelle : `scripts/check-reference-sync.sh [canonical_dir]`.
+- **`prompt`** (proactive): throttle 2/session via `ctx.storage` (`proactive:<sessionID>`:
+  `count`, `seen`, `cooldown`), dedup by prompt hash, cooldown after `skip` (via
+  `record_proactive`, markdown fallback). `INTERVENE/NEVER` judgement delegated to the model.
+- **`context`**: one-shot `[horka-mentor] …` injection (dedup by marker), dynamic
+  Context7 tool discovery, unique quiz reminder (`reminderDone:<sessionID>`).
+- **`compaction`**: injects topics/levels + `mode` + last prompt (`state:<sessionID>`),
+  `event.result` left to the model.
 
 ---
 
-## Développement
+## References
+
+- `src/references/pedagogy.md` — 5 assessment methods, INTERVENE/COMMENT INLINE/NEVER,
+  3 depth levels, ALL/ANY criteria, Security-Critical DIRECTIVE+batch, fast/slow
+  /disengaged adaptation, dependency map, Dunning-Kruger, cross-stack, session length.
+- `src/references/level-up-rules.md` — level transition table.
+- `src/references/memory-templates.md` — memory templates adapted to Opencode paths.
+- Conceptual check: `scripts/check-reference-sync.sh [canonical_dir]`.
+
+---
+
+## Development
 
 ```sh
 bun run typecheck   # tsc --noEmit
@@ -159,19 +160,19 @@ opencode2 service status
 opencode2 plugin list
 ```
 
-Compatibilité : `@opencode/plugin@^2.0.7` (testé sur OpenCode v2.0.7, runtime bun).
-Tester le package installé, pas uniquement le lien workspace.
+Compatibility: `@opencode/plugin@^2.0.7` (tested on OpenCode v2.0.7, bun runtime).
+Test the installed package, not only the workspace link.
 
 ---
 
-## Limites connues (v1.1)
+## Known limits (v1.1)
 
-- Pas de support multi-utilisateur.
-- Pas de dashboard/UI custom.
-- Pas de fetch web automatique (gate Context7 dur par défaut).
-- Cooldown proactif dépend du modèle appelant `record_proactive` (fallback markdown
-  documenté).
+- No multi-user support.
+- No custom dashboard/UI.
+- No automatic web fetch (Context7 hard gate by default).
+- Proactive cooldown depends on the model calling `record_proactive` (markdown fallback
+  documented).
 
-*Port du plugin source — 2 skills 5+6 étapes, 3 références, proactif, spaced
-repetition, cross-stack, regression, 10+7 règles.*
+*Port of the source plugin — 2 skills 5+6 steps, 3 references, proactivity, spaced
+repetition, cross-stack, regression, 10+7 rules.*
 EOF
