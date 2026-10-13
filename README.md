@@ -160,7 +160,7 @@ opencode2 service status
 opencode2 plugin list
 ```
 
-Compatibility: `@opencode/plugin@^2.0.7` (tested on OpenCode v2.0.7, bun runtime).
+Compatibility: `@opencode/plugin@^2.0.7` (tested on Open Code, bun runtime).
 Test the installed package, not only the workspace link.
 
 ---
