@@ -9,7 +9,7 @@ plugin to OpenCode. Runtime: bun on `@opencode/plugin@^2.0.7`.
 - Proactive throttling: 2 prompts/session, retry-safe dedup, deterministic cooldown
 - Spaced repetition J+1 → J+30, cross-stack translation, regression detection
 
-> Source: `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → target Open Code.
+> Source: `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → target OpenCode.
 > Distribution is **GitHub only** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`);
 > no NPM publish is required.
 
@@ -160,7 +160,7 @@ opencode2 service status
 opencode2 plugin list
 ```
 
-Compatibility: `@opencode/plugin@^2.0.7` (tested on Open Code, bun runtime).
+Compatibility: `@opencode/plugin@^2.0.7` (tested on OpenCode, bun runtime).
 Test the installed package, not only the workspace link.
 
 ---
