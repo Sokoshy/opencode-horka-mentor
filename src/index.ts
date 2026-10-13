@@ -204,22 +204,15 @@ export default Plugin.define({
     }
     try {
       await ctx.session.hook("prompt", async (event: any) => {
-        if (!proactiveOpt) return;
         const raw: string = event.prompt?.text ?? "";
         const sid = (event.sessionID as string) ?? "";
         if (!sid) return;
         if (raw?.trim()) await updateState(sid, { lastPrompt: raw });
         if (hasExplicitSkills(event.prompt ?? {})) { await safeSet(`active:${sid}`, { at: Date.now(), via: "explicit" }); return; }
         if (!shouldConsider(raw, event.prompt ?? {})) return;
-        const state = await getProactive(sid);
-        if (state.cooldown || state.count >= 2) return;
-        const hash = normalizePromptHash(raw);
-        if (state.seen.includes(hash)) return;
-        await safeSet(`active:${sid}`, { at: Date.now(), via: "proactive" });
-        try {
-          event.prompt.text = `[horka-mentor:proactive] Si cette requête implique un concept non couvert par \`${memoryPaths.primary}/topics/\` (ou niveau < confident et non évalué <30j), applique le protocole mentor Step 2 Proactif du skill horka-mentor (INTERVENE vs NEVER selon ${referencesDir}/pedagogy.md) : 1 question ouverte max (jamais oui/non), throttle 2/session, "skip" = cooldown, jamais sur concepts triviaux. Consulte la mémoire via le tool horka_mentor_progress (check_proactive) avant de juger. Sinon, ignore ce rappel et réponds normalement.\n\n` + raw;
-        } catch {}
-        await safeSet(`proactive:${sid}`, { ...state, count: state.count + 1, seen: [...state.seen, hash], updatedAt: Date.now() });
+        // Pi/plan parity: proactive concept interventions are handled by the skill
+        // itself (autoinvoke + Proactive mode in profile). No per-prompt prefix.
+        return;
       });
     } catch (e) {
       console.warn("[horka-mentor] prompt hook failed:", (e as Error)?.message);
