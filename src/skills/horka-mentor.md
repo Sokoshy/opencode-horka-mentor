@@ -51,8 +51,9 @@ I'm limited to pure pedagogy: concepts, analogies, questions.
 For precise code examples, install Context7.
 ```
 En mode `--no-context7`, ne JAMAIS donner d'exemples utilisant des API specifiques de frameworks/libraries.
+Le fetch web n'est PAS un substitut automatique à Context7.
 
-> Tool utilitaire disponible : `horka_mentor_progress` (5 actions : `get_profile`, `list_topics`, `get_topic`, `get_quiz_log`, `check_proactive`) — interroge la mémoire mentor `{{memoryPath}}/` (source de vérité filesystem, miroir `ctx.storage` write-only). À utiliser pour consulter `dev-profile.md` et `topics/` sans deviner les chemins. Se limiter aux concepts generiques, pseudocode, et analogies.
+> Tool utilitaire disponible : `horka_mentor_progress` (6 actions : `get_profile`, `list_topics`, `get_topic`, `get_quiz_log`, `check_proactive`, `record_proactive`) — interroge la mémoire mentor `{{memoryPath}}/` (source de vérité filesystem, miroir `ctx.storage` write-only). À utiliser pour consulter `dev-profile.md` et `topics/` sans deviner les chemins. Se limiter aux concepts generiques, pseudocode, et analogies.
 
 ## Step 1 — Cold Start (premiere interaction uniquement)
 
@@ -111,7 +112,7 @@ Avant de coder, je voudrais verifier ta comprehension.
 
 **Throttle proactif** :
 - Max 2 interventions pedagogiques par session (session = une conversation Claude Code, du lancement a la fermeture ou au /clear)
-- Apres un "skip", cooldown pour le reste de la session
+- Apres un "skip", cooldown pour le reste de la session — appelle `horka_mentor_progress` avec `action: record_proactive`, `outcome: skipped` (et `sessionID`) pour le rendre déterministe ; à défaut, log `needs-revisit` (fallback markdown)
 - Jamais sur des concepts triviaux (voir "NEVER INTERVENE" dans pedagogy.md)
 - Adapte le style de la question proactive a la `learning_preference` du profil : en mode build, prefere les questions courtes (predict-output 3 lignes, spot-bug) ; en mode learn, les questions ouvertes conceptuelles
 
