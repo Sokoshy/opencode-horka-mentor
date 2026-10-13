@@ -10,7 +10,7 @@ plugin to OpenCode. Runtime: bun on `@opencode/plugin@^2.0.7`.
 - Spaced repetition J+1 → J+30, cross-stack translation, regression detection
 
 > Source: `joey-barbier/ClaudeCode-Plugin/plugins/horka-mentor` → target OpenCode.
-> Distribution is **GitHub only** (`opencode2 plugin add github:Sokoshy/opencode-horka-mentor`);
+> Distribution is **GitHub only** (`opencode plugin add github:Sokoshy/opencode-horka-mentor`);
 > no NPM publish is required.
 
 ---
@@ -18,9 +18,9 @@ plugin to OpenCode. Runtime: bun on `@opencode/plugin@^2.0.7`.
 ## Installation
 
 ```sh
-opencode2 plugin add github:Sokoshy/opencode-horka-mentor
-opencode2 plugin list        # should show horka-mentor
-opencode2 service restart
+opencode plugin add github:Sokoshy/opencode-horka-mentor
+opencode plugin list        # should show horka-mentor
+opencode service restart
 ```
 
 ### Local development
@@ -28,13 +28,13 @@ opencode2 service restart
 ```sh
 git clone <repo> && cd opencode-horka-mentor
 bun install
-opencode2 service restart   # auto-discovered via .opencode/plugins/horka-mentor.ts
+opencode service restart   # auto-discovered via .opencode/plugins/horka-mentor.ts
 ```
 
 > **Important**: auto-discovery is enough. Never put `.opencode/plugins/horka-mentor.ts`
 > into the `plugins` list of `opencode.jsonc` (otherwise:
 > "configured plugin path must be a directory").
-> `package.json` exposes `".": "./src/index.ts"` for `opencode2 plugin add`.
+> `package.json` exposes `".": "./src/index.ts"` for `opencode plugin add`.
 
 ---
 
@@ -156,8 +156,8 @@ answer (even without results). Free key: https://context7.com/dashboard.
 ```sh
 bun run typecheck   # tsc --noEmit
 bun test            # paths, memory, proactive-policy, reminder, storage-state
-opencode2 service status
-opencode2 plugin list
+opencode service status
+opencode plugin list
 ```
 
 Compatibility: `@opencode/plugin@^2.0.7` (tested on OpenCode, bun runtime).
