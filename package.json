@@ -1,6 +1,6 @@
 {
   "name": "opencode-horka-mentor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Teaching AI mentor for junior developers — learn/build modes, proactive interventions, spaced repetition quizzes. Port of horka-mentor (Claude Code) to OpenCode 2.",
   "type": "module",
   "exports": {

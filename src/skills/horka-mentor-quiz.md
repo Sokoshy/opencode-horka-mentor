@@ -25,7 +25,7 @@ Tente d'appeler `context7_resolve-library-id` (alias `mcp_context7_resolve-libra
 
 Contrairement a /mentor, le quiz ne bloque PAS sans Context7 car les questions "explain" ne necessitent aucun code specifique.
 
-> Tool utilitaire : `horka_mentor_progress` (`get_profile`, `list_topics`, `get_topic`, `get_quiz_log`, `check_proactive`) — interroge `{{memoryPath}}/` (filesystem source de vérité, miroir `ctx.storage`). Idéal pour scanner `topics/` et vérifier `next_review`.
+> Tool utilitaire : `horka_mentor_progress` (`get_profile`, `list_topics`, `get_topic`, `get_quiz_log`, `check_proactive`, `record_proactive`) — interroge `{{memoryPath}}/` (filesystem source de vérité, miroir `ctx.storage`). Idéal pour scanner `topics/` et vérifier `next_review`.
 
 ## Step 1 — Prerequisites Check
 
